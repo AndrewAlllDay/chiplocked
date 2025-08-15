@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import Chip from './Chip';
+import Modal from './Modal';
 
 const CHIP_LIST = [
     'Ace Chip', 'Eagle Chip', 'Birdie Chip', 'Throw-in Chip', 'Big Putter Chip',
@@ -18,6 +20,8 @@ const GameScreen = () => {
     const [game, setGame] = useState(null);
     const [selectedChip, setSelectedChip] = useState(null);
     const [currentPlayer, setCurrentPlayer] = useState(null);
+    const [isPotModalOpen, setIsPotModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
     useEffect(() => {
         const playerName = sessionStorage.getItem('playerName');
@@ -37,19 +41,29 @@ const GameScreen = () => {
         return () => unsubscribe();
     }, [gameId]);
 
-    const handleAssignChip = async (chipName, playerName) => {
-        if (currentPlayer !== game.host) {
-            alert("Only the host can assign chips!");
-            return;
-        }
-
+    const handleHostAssignChip = async (playerName) => {
+        if (!selectedChip) return;
         const gameDocRef = doc(db, 'games', gameId);
-        const fieldToUpdate = `chipState.${chipName}`;
+        const fieldToUpdate = `chipState.${selectedChip}`;
         await updateDoc(gameDocRef, { [fieldToUpdate]: playerName });
+        setIsPotModalOpen(false);
         setSelectedChip(null);
     };
 
-    // If the game data or current player name hasn't loaded yet, show a loading screen.
+    const handlePlayerTransferChip = async (newOwner) => {
+        if (!selectedChip) return;
+        const currentOwner = game.chipState?.[selectedChip];
+        if (currentPlayer !== currentOwner) {
+            alert("You can't reassign a chip you don't own!");
+            return;
+        }
+        const gameDocRef = doc(db, 'games', gameId);
+        const fieldToUpdate = `chipState.${selectedChip}`;
+        await updateDoc(gameDocRef, { [fieldToUpdate]: newOwner });
+        setIsTransferModalOpen(false);
+        setSelectedChip(null);
+    };
+
     if (!game || !currentPlayer) {
         return (
             <div className="bg-slate-900 text-white min-h-screen flex justify-center items-center">
@@ -60,9 +74,11 @@ const GameScreen = () => {
 
     const isHost = currentPlayer === game.host;
 
-    // Calculate the player's own chips (for the player view)
-    const myChips = Object.entries(game.chipState || {})
-        .filter(([chip, owner]) => owner === currentPlayer)
+    const assignedChipsData = game.chipState || {};
+    const chipsInPot = CHIP_LIST.filter(chip => !assignedChipsData[chip]);
+
+    const myChips = Object.entries(assignedChipsData)
+        .filter(([_chip, owner]) => owner === currentPlayer)
         .map(([chip]) => chip);
 
     return (
@@ -73,63 +89,92 @@ const GameScreen = () => {
                     <span className="text-2xl font-bold text-yellow-400 tracking-widest">{game.roomCode}</span>
                 </div>
 
-                {isHost ? (
-                    // HOST VIEW
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-lg">
-                            <h2 className="text-2xl font-semibold mb-4">Players ({game.players.length})</h2>
-                            <ul className="space-y-2">
-                                {game.players.map((player) => (
-                                    <li key={player} className={`bg-slate-700 p-3 rounded-md text-lg ${player === game.host ? 'border-l-4 border-cyan-400' : ''}`}>
-                                        {player} {player === game.host && <span className="text-xs text-cyan-400 ml-2">(Host)</span>}
-                                    </li>
-                                ))}
-                            </ul>
+                <div className="bg-slate-800 p-6 rounded-lg mb-6">
+                    <h2 className="text-2xl font-semibold mb-4">My Chips ({myChips.length})</h2>
+                    {myChips.length > 0 ? (
+                        <div className="flex flex-wrap justify-center gap-4">
+                            {myChips.map((chip) => (
+                                <button
+                                    key={chip}
+                                    onClick={() => {
+                                        setSelectedChip(chip);
+                                        setIsTransferModalOpen(true);
+                                    }}
+                                    className="transition-transform hover:scale-105"
+                                // --- THIS IS THE FIX ---
+                                // The disabled={isHost} attribute has been removed.
+                                >
+                                    <Chip chipName={chip} owner={currentPlayer} />
+                                </button>
+                            ))}
                         </div>
-                        <div className="bg-slate-800 p-6 rounded-lg md:row-span-2">
-                            <h2 className="text-2xl font-semibold mb-4">Chip Tracker (Host View)</h2>
-                            <div className="space-y-3">
-                                {CHIP_LIST.map((chip) => (
-                                    <div key={chip} className="bg-slate-700 p-3 rounded-md">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-bold">{chip}</span>
-                                            <span className="text-yellow-400">{game.chipState?.[chip] || 'Unclaimed'}</span>
-                                        </div>
-                                        {selectedChip === chip && (
-                                            <div className="mt-3 pt-3 border-t border-slate-600 flex flex-wrap gap-2">
-                                                <p className="w-full text-sm text-slate-400 mb-1">Assign to:</p>
-                                                {game.players.map((player) => (
-                                                    <button key={player} onClick={() => handleAssignChip(chip, player)} className="bg-cyan-600 text-sm hover:bg-cyan-700 rounded-md px-3 py-1 font-semibold">{player}</button>
-                                                ))}
-                                                <button onClick={() => handleAssignChip(chip, null)} className="bg-slate-500 text-sm hover:bg-slate-600 rounded-md px-3 py-1 font-semibold">Unclaim</button>
-                                            </div>
-                                        )}
-                                        <button onClick={() => setSelectedChip(selectedChip === chip ? null : chip)} className="w-full text-left mt-2 text-cyan-400 text-sm font-semibold">
-                                            {selectedChip === chip ? 'Cancel' : 'Update Holder'}
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    // PLAYER VIEW
-                    <div className="bg-slate-800 p-6 rounded-lg">
-                        <h2 className="text-2xl font-semibold mb-4">My Chips ({myChips.length})</h2>
-                        <ul className="space-y-2">
-                            {myChips.length > 0 ? (
-                                myChips.map((chip) => (
-                                    <li key={chip} className="bg-slate-700 p-3 rounded-md text-lg">
-                                        {chip}
-                                    </li>
-                                ))
-                            ) : (
-                                <p className="text-slate-400">You are not currently holding any chips.</p>
-                            )}
-                        </ul>
+                    ) : (
+                        <p className="text-slate-400">You are not currently holding any chips.</p>
+                    )}
+                </div>
+
+                {isHost && (
+                    <div className="text-center">
+                        <button
+                            onClick={() => setIsPotModalOpen(true)}
+                            className="bg-cyan-600 hover:bg-cyan-700 rounded-lg px-6 py-3 font-semibold transition-colors"
+                        >
+                            Manage Pot
+                        </button>
                     </div>
                 )}
             </div>
+
+            {/* Modal for the Host's Pot */}
+            <Modal
+                isOpen={isPotModalOpen}
+                onClose={() => {
+                    setIsPotModalOpen(false);
+                    setSelectedChip(null);
+                }}
+                title={selectedChip ? `Assign ${selectedChip}` : "Chips in the Pot"}
+            >
+                {!selectedChip ? (
+                    <div className="grid grid-cols-3 gap-y-8 gap-x-4 place-items-center">
+                        {chipsInPot.map((chip) => (
+                            <button key={chip} onClick={() => setSelectedChip(chip)} className="transition-transform hover:scale-105">
+                                <Chip chipName={chip} owner={null} />
+                            </button>
+                        ))}
+                        {chipsInPot.length === 0 && <p className="col-span-3 text-slate-400">All chips have been handed out.</p>}
+                    </div>
+                ) : (
+                    <div className="flex flex-col space-y-2">
+                        <p className="text-slate-400 mb-2">Who is holding this chip now?</p>
+                        {game.players.map((player) => (
+                            <button key={player} onClick={() => handleHostAssignChip(player)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">
+                                {player}
+                            </button>
+                        ))}
+                        <button onClick={() => handleHostAssignChip(null)} className="bg-slate-500 w-full text-left hover:bg-slate-600 rounded-md px-4 py-3 font-semibold transition-colors">
+                            Unclaim (Return to Pot)
+                        </button>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Modal for Player-to-Player Transfer */}
+            <Modal
+                isOpen={isTransferModalOpen}
+                onClose={() => setIsTransferModalOpen(false)}
+                title={`Transfer ${selectedChip}`}
+            >
+                <div className="flex flex-col space-y-2">
+                    <p className="text-slate-400 mb-2">Who are you giving this chip to?</p>
+                    {game.players
+                        .filter(player => player !== currentPlayer)
+                        .map((player) => (
+                            <button key={player} onClick={() => handlePlayerTransferChip(player)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">
+                                {player}
+                            </button>
+                        ))}
+                </div>
+            </Modal>
         </div>
     );
 };
