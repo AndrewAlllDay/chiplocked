@@ -24,7 +24,8 @@ const GameScreen = () => {
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
     useEffect(() => {
-        const playerName = sessionStorage.getItem('playerName');
+        // --- CHANGE IS HERE ---
+        const playerName = localStorage.getItem('playerName');
         setCurrentPlayer(playerName);
     }, []);
 
@@ -101,8 +102,6 @@ const GameScreen = () => {
                                         setIsTransferModalOpen(true);
                                     }}
                                     className="transition-transform hover:scale-105"
-                                // --- THIS IS THE FIX ---
-                                // The disabled={isHost} attribute has been removed.
                                 >
                                     <Chip chipName={chip} owner={currentPlayer} />
                                 </button>

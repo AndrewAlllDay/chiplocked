@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from '../firebase';
 
-// generateRoomCode function remains the same...
 const generateRoomCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -22,15 +21,15 @@ const HomeScreen = () => {
         const hostName = prompt("Please enter your name:");
         if (!hostName) return;
 
-        // --- NEW: Save user's identity ---
-        sessionStorage.setItem('playerName', hostName);
+        // --- CHANGE IS HERE ---
+        localStorage.setItem('playerName', hostName);
 
         try {
             const roomCode = generateRoomCode();
             const gameDocRef = await addDoc(collection(db, "games"), {
                 roomCode: roomCode,
                 players: [hostName],
-                host: hostName, // Explicitly set the host
+                host: hostName,
                 chipState: {},
                 createdAt: new Date(),
             });
@@ -50,8 +49,8 @@ const HomeScreen = () => {
         const playerName = prompt("Please enter your name:");
         if (!playerName) return;
 
-        // --- NEW: Save user's identity ---
-        sessionStorage.setItem('playerName', playerName);
+        // --- AND CHANGE IS HERE ---
+        localStorage.setItem('playerName', playerName);
 
         try {
             const gamesRef = collection(db, "games");
@@ -71,7 +70,6 @@ const HomeScreen = () => {
     };
 
     return (
-        // JSX remains the same...
         <div className="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4">
             <h1 className="text-5xl font-bold text-cyan-400 mb-2">Chip-locked</h1>
             <p className="text-slate-400 mb-12">The ultimate disc golf side-game tracker</p>
