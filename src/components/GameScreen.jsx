@@ -5,6 +5,9 @@ import { db } from '../firebase';
 import Chip from './Chip';
 import Modal from './Modal';
 
+// This ID is provided globally by the environment for correct Firestore pathing
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
 const GameScreen = () => {
     const { gameId } = useParams();
     const [game, setGame] = useState(null);
@@ -23,7 +26,7 @@ const GameScreen = () => {
 
     useEffect(() => {
         if (!gameId) return;
-        const gameDocRef = doc(db, 'games', gameId);
+        const gameDocRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
         const unsubscribe = onSnapshot(gameDocRef, (docSnapshot) => {
             if (docSnapshot.exists()) {
                 setGame({ id: docSnapshot.id, ...docSnapshot.data() });
@@ -36,7 +39,7 @@ const GameScreen = () => {
 
     // Fetch dynamic chips from Firestore
     useEffect(() => {
-        const chipsCollectionRef = collection(db, "chips");
+        const chipsCollectionRef = collection(db, `artifacts/${appId}/public/data/chips`);
         const unsubscribe = onSnapshot(chipsCollectionRef, (querySnapshot) => {
             const dynamicChips = querySnapshot.docs.map(doc => doc.data().name);
             setChipsList(dynamicChips);
@@ -47,7 +50,7 @@ const GameScreen = () => {
     const handleHostAssignChip = async (playerName) => {
         if (!selectedChip) return;
         try {
-            const gameDocRef = doc(db, 'games', gameId);
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
             const fieldToUpdate = `chipState.${selectedChip}`;
             await updateDoc(gameDocRef, { [fieldToUpdate]: playerName });
             setIsPotModalOpen(false);
@@ -68,7 +71,7 @@ const GameScreen = () => {
             return;
         }
         try {
-            const gameDocRef = doc(db, 'games', gameId);
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/games`, gameId);
             const fieldToUpdate = `chipState.${selectedChip}`;
             await updateDoc(gameDocRef, { [fieldToUpdate]: newOwner });
             setIsTransferModalOpen(false);

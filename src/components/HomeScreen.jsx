@@ -4,6 +4,9 @@ import { collection, addDoc, query, where, getDocs, updateDoc, arrayUnion } from
 import { db } from '../firebase';
 import Modal from './Modal';
 
+// This ID is provided globally by the environment for correct Firestore pathing
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
 const generateRoomCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -41,7 +44,7 @@ const HomeScreen = () => {
 
         try {
             const newRoomCode = generateRoomCode();
-            const gameDocRef = await addDoc(collection(db, "games"), {
+            const gameDocRef = await addDoc(collection(db, `artifacts/${appId}/public/data/games`), {
                 roomCode: newRoomCode,
                 players: [hostName.trim()],
                 host: hostName.trim(),
@@ -67,7 +70,7 @@ const HomeScreen = () => {
         localStorage.setItem('playerName', playerName.trim());
 
         try {
-            const gamesRef = collection(db, "games");
+            const gamesRef = collection(db, `artifacts/${appId}/public/data/games`);
             const q = query(gamesRef, where("roomCode", "==", roomCode.trim().toUpperCase()));
             const querySnapshot = await getDocs(q);
 

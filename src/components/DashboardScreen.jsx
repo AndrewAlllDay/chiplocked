@@ -4,6 +4,9 @@ import { db } from '../firebase';
 import Modal from './Modal';
 import Chip from './Chip';
 
+// This ID is provided globally by the environment for correct Firestore pathing
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
 const DashboardScreen = () => {
     const [newChipName, setNewChipName] = useState('');
     const [newChipDescription, setNewChipDescription] = useState('');
@@ -14,7 +17,7 @@ const DashboardScreen = () => {
     const [chipToDelete, setChipToDelete] = useState(null);
 
     useEffect(() => {
-        const chipsCollectionRef = collection(db, "chips");
+        const chipsCollectionRef = collection(db, `artifacts/${appId}/public/data/chips`);
         const unsubscribe = onSnapshot(chipsCollectionRef, (querySnapshot) => {
             const chipList = [];
             querySnapshot.forEach((doc) => {
@@ -33,7 +36,7 @@ const DashboardScreen = () => {
         }
 
         try {
-            await addDoc(collection(db, "chips"), {
+            await addDoc(collection(db, `artifacts/${appId}/public/data/chips`), {
                 name: newChipName.trim(),
                 description: newChipDescription.trim(),
                 createdAt: new Date(),
@@ -57,7 +60,7 @@ const DashboardScreen = () => {
         if (!chipToDelete) return;
 
         try {
-            const chipDocRef = doc(db, 'chips', chipToDelete.id);
+            const chipDocRef = doc(db, `artifacts/${appId}/public/data/chips`, chipToDelete.id);
             await deleteDoc(chipDocRef);
             console.log(`Chip "${chipToDelete.name}" deleted successfully.`);
             setIsDeleteModalOpen(false);
