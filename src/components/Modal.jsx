@@ -10,15 +10,15 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     return (
         // Main overlay
         <div
-            className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4"
             onClick={onClose} // Close modal if overlay is clicked
         >
             {/* Modal content container */}
             <div
-                className="bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-sm"
+                className="bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col max-h-[85vh]"
                 onClick={e => e.stopPropagation()} // Prevent clicks inside the modal from closing it
             >
-                <div className="flex justify-between items-center border-b border-slate-700 pb-3 mb-4">
+                <div className="flex-shrink-0 flex justify-between items-center border-b border-slate-700 pb-3 mb-4">
                     <h2 className="text-2xl font-semibold">{title}</h2>
                     <button
                         onClick={onClose}
@@ -27,7 +27,8 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                         &times;
                     </button>
                 </div>
-                <div>
+                {/* This div will now scroll if the content inside is too tall */}
+                <div className="overflow-y-auto">
                     {children}
                 </div>
             </div>

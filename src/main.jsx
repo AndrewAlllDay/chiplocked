@@ -1,11 +1,10 @@
-// src/main.jsx
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from './App.jsx';
 import HomeScreen from './components/HomeScreen.jsx';
 import GameScreen from './components/GameScreen.jsx';
+import DashboardScreen from './components/DashboardScreen.jsx';
 import './index.css';
 
 // Define the application's routes
@@ -21,6 +20,10 @@ const router = createBrowserRouter([
       {
         path: "/game/:gameId", // The :gameId part is a dynamic parameter
         element: <GameScreen />,
+      },
+      {
+        path: "/dashboard",
+        element: <DashboardScreen />,
       },
     ],
   },

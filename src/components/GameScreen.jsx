@@ -1,30 +1,22 @@
-// src/components/GameScreen.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import Chip from './Chip';
 import Modal from './Modal';
 
-const CHIP_LIST = [
-    'Ace Chip', 'Eagle Chip', 'Birdie Chip', 'Throw-in Chip', 'Big Putter Chip',
-    'Stroke Chip', 'Drop-in Chip', 'Rescue Ranger Chip', 'Scramble Chip', 'Pured Chip',
-    'Bogey Chip', 'Double Chip', 'Triple+ Chip', 'Air Ball Chip', 'Tree Chip',
-    'Penalty Stroke Chip', 'Dethroned Chip',
-    'Bonus Chip',
-];
-
 const GameScreen = () => {
     const { gameId } = useParams();
     const [game, setGame] = useState(null);
+    const [chipsList, setChipsList] = useState([]);
     const [selectedChip, setSelectedChip] = useState(null);
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [isPotModalOpen, setIsPotModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [message, setMessage] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
-        // --- CHANGE IS HERE ---
         const playerName = localStorage.getItem('playerName');
         setCurrentPlayer(playerName);
     }, []);
@@ -42,27 +34,50 @@ const GameScreen = () => {
         return () => unsubscribe();
     }, [gameId]);
 
+    // Fetch dynamic chips from Firestore
+    useEffect(() => {
+        const chipsCollectionRef = collection(db, "chips");
+        const unsubscribe = onSnapshot(chipsCollectionRef, (querySnapshot) => {
+            const dynamicChips = querySnapshot.docs.map(doc => doc.data().name);
+            setChipsList(dynamicChips);
+        });
+        return () => unsubscribe();
+    }, []);
+
     const handleHostAssignChip = async (playerName) => {
         if (!selectedChip) return;
-        const gameDocRef = doc(db, 'games', gameId);
-        const fieldToUpdate = `chipState.${selectedChip}`;
-        await updateDoc(gameDocRef, { [fieldToUpdate]: playerName });
-        setIsPotModalOpen(false);
-        setSelectedChip(null);
+        try {
+            const gameDocRef = doc(db, 'games', gameId);
+            const fieldToUpdate = `chipState.${selectedChip}`;
+            await updateDoc(gameDocRef, { [fieldToUpdate]: playerName });
+            setIsPotModalOpen(false);
+            setSelectedChip(null);
+        } catch (err) {
+            console.error("Error assigning chip: ", err);
+            setMessage("Failed to assign chip. Please try again.");
+            setIsModalOpen(true);
+        }
     };
 
     const handlePlayerTransferChip = async (newOwner) => {
         if (!selectedChip) return;
         const currentOwner = game.chipState?.[selectedChip];
         if (currentPlayer !== currentOwner) {
-            alert("You can't reassign a chip you don't own!");
+            setMessage("You can't reassign a chip you don't own!");
+            setIsModalOpen(true);
             return;
         }
-        const gameDocRef = doc(db, 'games', gameId);
-        const fieldToUpdate = `chipState.${selectedChip}`;
-        await updateDoc(gameDocRef, { [fieldToUpdate]: newOwner });
-        setIsTransferModalOpen(false);
-        setSelectedChip(null);
+        try {
+            const gameDocRef = doc(db, 'games', gameId);
+            const fieldToUpdate = `chipState.${selectedChip}`;
+            await updateDoc(gameDocRef, { [fieldToUpdate]: newOwner });
+            setIsTransferModalOpen(false);
+            setSelectedChip(null);
+        } catch (err) {
+            console.error("Error transferring chip: ", err);
+            setMessage("Failed to transfer chip. Please try again.");
+            setIsModalOpen(true);
+        }
     };
 
     if (!game || !currentPlayer) {
@@ -76,7 +91,7 @@ const GameScreen = () => {
     const isHost = currentPlayer === game.host;
 
     const assignedChipsData = game.chipState || {};
-    const chipsInPot = CHIP_LIST.filter(chip => !assignedChipsData[chip]);
+    const chipsInPot = chipsList.filter(chip => !assignedChipsData[chip]);
 
     const myChips = Object.entries(assignedChipsData)
         .filter(([_chip, owner]) => owner === currentPlayer)
@@ -161,7 +176,7 @@ const GameScreen = () => {
             <Modal
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
-                title={`Transfer ${selectedChip}`}
+                title={selectedChip ? `Transfer ${selectedChip}` : "Transfer Chip"}
             >
                 <div className="flex flex-col space-y-2">
                     <p className="text-slate-400 mb-2">Who are you giving this chip to?</p>
@@ -173,6 +188,10 @@ const GameScreen = () => {
                             </button>
                         ))}
                 </div>
+            </Modal>
+            {/* General message modal */}
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Heads Up!">
+                <p className="text-center">{message}</p>
             </Modal>
         </div>
     );
