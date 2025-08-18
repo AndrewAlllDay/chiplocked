@@ -24,6 +24,11 @@ const ChipDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [feedback, setFeedback] = useState('');
 
+    // --- New State for Password Protection ---
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [authFeedback, setAuthFeedback] = useState('');
+
     // Listen for real-time updates to the chips collection
     useEffect(() => {
         const chipsCollectionRef = collection(db, 'chip-types');
@@ -67,8 +72,6 @@ const ChipDashboard = () => {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
-                // --- CHANGE IS HERE ---
-                // Explicitly map the data to include the description
                 const chipsToUpload = results.data
                     .filter(row => row.name && (row.type === 'good' || row.type === 'bad'))
                     .map(row => ({
@@ -105,6 +108,51 @@ const ChipDashboard = () => {
         });
     };
 
+    // --- New Password Handler ---
+    const handlePasswordSubmit = (e) => {
+        e.preventDefault();
+        // A simple hardcoded password for demonstration.
+        // In a real app, you would use a more secure method.
+        if (passwordInput === '1234') {
+            setIsAuthenticated(true);
+            setAuthFeedback('');
+        } else {
+            setAuthFeedback('Incorrect password. Please try again.');
+            setPasswordInput('');
+        }
+    };
+
+    // --- Conditional Rendering for Password Protection ---
+    if (!isAuthenticated) {
+        return (
+            <div className="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center">
+                <div className="bg-slate-800 p-8 rounded-lg shadow-xl max-w-sm w-full text-center">
+                    <h1 className="text-3xl font-bold mb-4">Access Restricted</h1>
+                    <p className="text-slate-400 mb-6">Please enter the 4-digit password to continue.</p>
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                        <input
+                            type="password"
+                            inputMode="numeric"
+                            pattern="[0-9]{4}"
+                            maxLength="4"
+                            value={passwordInput}
+                            onChange={(e) => setPasswordInput(e.target.value)}
+                            placeholder="****"
+                            className="w-full bg-slate-700 border-2 border-slate-600 rounded-md p-3 text-center text-2xl tracking-widest focus:outline-none focus:border-cyan-400"
+                            required
+                        />
+                        {authFeedback && <div className="text-red-400">{authFeedback}</div>}
+                        <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 rounded-md p-3 font-bold transition">
+                            Unlock
+                        </button>
+                    </form>
+                    <Link to="/" className="text-cyan-400 hover:text-cyan-300 mt-4 inline-block">&larr; Back to Home</Link>
+                </div>
+            </div>
+        );
+    }
+
+    // --- Normal Dashboard Content (only renders if isAuthenticated is true) ---
     return (
         <div className="bg-slate-900 text-white min-h-screen p-4 sm:p-8">
             <div className="max-w-4xl mx-auto">

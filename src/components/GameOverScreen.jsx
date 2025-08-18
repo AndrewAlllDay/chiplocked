@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import Modal from './Modal'; // Make sure to import your Modal component
+import Modal from './Modal';
 
 const GameOverScreen = () => {
     const { gameId } = useParams();
@@ -12,12 +12,11 @@ const GameOverScreen = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedChip, setSelectedChip] = useState(null);
-    const [chipDetails, setChipDetails] = useState({}); // State to hold all chip details
+    const [chipDetails, setChipDetails] = useState({});
 
     useEffect(() => {
         const calculateScores = async () => {
             try {
-                // 1. Get all game data
                 const gameDocRef = doc(db, 'games', gameId);
                 const gameDocSnap = await getDoc(gameDocRef);
 
@@ -29,7 +28,6 @@ const GameOverScreen = () => {
                 const gameScores = gameData.scores || {};
                 const chipState = gameData.chipState || {};
 
-                // 2. Get all chip details (name, type, description)
                 const chipsCollectionRef = collection(db, 'chip-types');
                 const chipsSnapshot = await getDocs(chipsCollectionRef);
                 const details = {};
@@ -37,41 +35,39 @@ const GameOverScreen = () => {
                     const data = doc.data();
                     details[data.name] = data;
                 });
-                setChipDetails(details); // Store details in state
+                setChipDetails(details);
 
-                // 3. Calculate chip score and collect chips for each player
-                const chipScores = players.reduce((acc, player) => ({ ...acc, [player]: 0 }), {});
-                const playerChips = players.reduce((acc, player) => ({ ...acc, [player]: [] }), {});
+                const chipScores = players.reduce((acc, player) => ({ ...acc, [player.uid]: 0 }), {});
+                const playerChips = players.reduce((acc, player) => ({ ...acc, [player.uid]: [] }), {});
 
-                for (const [chipName, owner] of Object.entries(chipState)) {
-                    // --- FIX IS HERE ---
-                    if (owner && Object.prototype.hasOwnProperty.call(chipScores, owner)) {
+                // --- CHANGE IS HERE: Read the new chipState structure ---
+                for (const [chipName, assignment] of Object.entries(chipState)) {
+                    if (assignment && assignment.owner && Object.prototype.hasOwnProperty.call(chipScores, assignment.owner)) {
+                        const ownerUid = assignment.owner;
                         const type = details[chipName]?.type;
-                        playerChips[owner].push(chipName);
+                        playerChips[ownerUid].push(chipName);
 
-                        if (type === 'good') chipScores[owner]--;
-                        else if (type === 'bad') chipScores[owner]++;
+                        if (type === 'good') chipScores[ownerUid]--;
+                        else if (type === 'bad') chipScores[ownerUid]++;
                     }
                 }
 
-                // 4. Calculate golf score for each player
                 const golfScores = players.reduce((acc, player) => {
-                    const totalScore = Object.values(gameScores[player] || {}).reduce((sum, score) => sum + score, 0);
-                    acc[player] = totalScore;
+                    const totalScore = Object.values(gameScores[player.uid] || {}).reduce((sum, score) => sum + score, 0);
+                    acc[player.uid] = totalScore;
                     return acc;
                 }, {});
 
-                // 5. Combine scores and sort
                 const finalScores = players.map(player => {
-                    const golfScore = golfScores[player];
-                    const chipScore = chipScores[player];
+                    const golfScore = golfScores[player.uid];
+                    const chipScore = chipScores[player.uid];
                     const totalScore = golfScore + chipScore;
                     return {
-                        name: player,
+                        name: player.name,
                         golfScore,
                         chipScore,
                         totalScore,
-                        chips: playerChips[player]
+                        chips: playerChips[player.uid]
                     };
                 });
 
@@ -97,7 +93,6 @@ const GameOverScreen = () => {
         return <div className="bg-slate-900 text-white min-h-screen flex justify-center items-center"><h1 className="text-xl font-bold text-red-500">Error: {error}</h1></div>;
     }
 
-    // Helper to format scores for display
     const formatScore = (score, isChipScore = false) => {
         if (score > 0) return `+${score}`;
         if (score === 0) return isChipScore ? '0' : 'E';

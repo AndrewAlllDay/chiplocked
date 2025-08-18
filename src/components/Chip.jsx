@@ -27,7 +27,7 @@ const Chip = ({ chipName, owner, chipType, onClick, onLongPress }) => {
             <span className="font-bold text-sm leading-tight">{chipName}</span>
             {owner && (
                 <span className={`mt-1 text-xs font-semibold italic ${ownerColor}`}>
-                    {owner}
+
                 </span>
             )}
         </button>
