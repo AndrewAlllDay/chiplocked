@@ -123,7 +123,7 @@ const HomeScreen = () => {
                     </div>
                     <div className={`transition-all duration-300 ease-in-out grid ${activeForm === 'create' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden">
-                            <form onSubmit={handleCreateGame} className="p-6 pt-0 space-y-4">
+                            <form onSubmit={handleCreateGame} className="p-6 pt-4 space-y-4">
                                 <InputField
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
@@ -164,7 +164,7 @@ const HomeScreen = () => {
                     </div>
                     <div className={`transition-all duration-300 ease-in-out grid ${activeForm === 'join' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden">
-                            <form onSubmit={handleJoinGame} className="p-6 pt-0 space-y-4">
+                            <form onSubmit={handleJoinGame} className="p-6 !pt-5 space-y-4">
                                 <InputField
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}

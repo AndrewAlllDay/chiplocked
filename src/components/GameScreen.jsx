@@ -1,6 +1,6 @@
 // src/components/GameScreen.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -13,11 +13,12 @@ const GameScreen = () => {
     const [game, setGame] = useState(null);
     const [allChips, setAllChips] = useState([]);
     const [selectedChip, setSelectedChip] = useState(null);
-    const [chipForDescription, setChipForDescription] = useState(null); // State for description modal
+    const [chipForDescription, setChipForDescription] = useState(null);
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [isPotModalOpen, setIsPotModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [holeScores, setHoleScores] = useState({});
+    const lastHoleRef = useRef(null); // Ref to track the last processed hole
 
     useEffect(() => {
         const playerName = localStorage.getItem('playerName');
@@ -50,15 +51,18 @@ const GameScreen = () => {
         return () => unsubscribeGame();
     }, [gameId, navigate]);
 
+    // --- FIX IS HERE ---
+    // This effect now safely resets the score form only when the hole number changes.
     useEffect(() => {
-        if (game) {
+        if (game && game.currentHole !== lastHoleRef.current) {
             const initialScores = game.players.reduce((acc, player) => {
-                acc[player] = 0;
+                acc[player] = 0; // Default to par
                 return acc;
             }, {});
             setHoleScores(initialScores);
+            lastHoleRef.current = game.currentHole;
         }
-    }, [game?.currentHole]);
+    }, [game]); // This now correctly depends on the entire 'game' object.
 
     const handleHostAssignChip = async (playerName) => {
         if (!selectedChip) return;

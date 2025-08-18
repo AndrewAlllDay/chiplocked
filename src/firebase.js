@@ -1,6 +1,9 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+// --- CHANGE IS HERE ---
+// Import the necessary functions for authentication
+import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 
 // Your web app's Firebase configuration, using the .env variables
 const firebaseConfig = {
@@ -16,5 +19,22 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Cloud Firestore and get a reference to the service
-// This is what you'll import into your components to interact with the database
 export const db = getFirestore(app);
+
+// --- AND CHANGE IS HERE ---
+// Initialize Firebase Authentication and get a reference to the service
+export const auth = getAuth(app);
+
+// Automatically sign in the user anonymously when the app loads
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // User is signed in, see docs for a list of available properties
+        // https://firebase.google.com/docs/reference/js/firebase.User
+        console.log("User is signed in with UID:", user.uid);
+    } else {
+        // User is signed out, so sign them in anonymously
+        signInAnonymously(auth).catch((error) => {
+            console.error("Error signing in anonymously:", error);
+        });
+    }
+});
