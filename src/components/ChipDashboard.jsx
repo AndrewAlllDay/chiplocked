@@ -6,11 +6,41 @@ import { collection, addDoc, writeBatch, onSnapshot, doc } from "firebase/firest
 import { db } from '../firebase';
 import Papa from 'papaparse';
 
+// You will need to import your images here, just like in the main Chip component.
+// import AceImage from '../assets/images/ace.png';
+// import EagleImage from '../assets/images/eagle.png';
+// And so on...
+
+// You also need the same mapping from the chipName to the image.
+// const chipImages = {
+//     'Ace': AceImage,
+//     'Eagle': EagleImage,
+//     'Birdie': BirdieImage,
+//     // Add all your chips here
+// };
+
 // A reusable Chip component for display purposes
 const ChipDisplay = ({ name, type }) => {
     const chipColor = type === 'bad' ? 'bg-red-500 border-red-700' : 'bg-green-500 border-green-700';
+
+    // Get the image source from the mapping
+    // const chipImageSrc = chipImages[name];
+
     return (
         <div className={`w-24 h-24 rounded-full flex flex-col justify-center items-center p-2 text-center shadow-lg border-4 ${chipColor}`}>
+            {/* The image is rendered here instead of the text span */}
+            {/* You will need to uncomment the img tag and the const variables above */}
+            {/*
+            {chipImageSrc ? (
+                <img
+                    src={chipImageSrc}
+                    alt={name}
+                    className="w-full h-full object-contain"
+                />
+            ) : (
+                <span className="font-bold text-sm leading-tight">{name}</span>
+            )}
+            */}
             <span className="font-bold text-sm leading-tight">{name}</span>
         </div>
     );
@@ -220,7 +250,11 @@ const ChipDashboard = () => {
                     ) : (
                         <div className="flex flex-wrap justify-center gap-4">
                             {allChips.length > 0 ? (
-                                allChips.map(chip => <ChipDisplay key={chip.id} name={chip.name} type={chip.type} />)
+                                allChips.map(chip => (
+                                    <div key={chip.id} className="relative group">
+                                        <ChipDisplay name={chip.name} type={chip.type} />
+                                    </div>
+                                ))
                             ) : (
                                 <p className="text-slate-400">No chips created yet. Add one above!</p>
                             )}

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs, updateDoc, arrayUnion, doc } from "firebase/firestore";
 import { db, auth } from '../firebase'; // Import auth
-import { motion } from 'framer-motion';
+
+
 
 const generateRoomCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -136,7 +137,7 @@ const HomeScreen = () => {
     };
 
     return (
-        <div className="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4">
+        <div className="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4 **overflow-hidden**">
             <div
                 className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32"
                 onClick={handleSecretTap}
@@ -195,7 +196,7 @@ const HomeScreen = () => {
                             />
                             <motion.path
                                 fill="#110d19"
-                                d="M161.65,26.4c29.15-2.15,62.4,6.27,86.87,22.22,5,3.26,12.89,7.26,10.6,14.39-9.83,13.99-21.85,26.7-33.47,39.35-6.86,3.11-19.16-6.01-26.69-8.17-52.75-15.17-104.76,24.53-100.91,79.97,3.61,52.07,57.66,85.35,106.06,66.2,11.46-4.53,18.2-15.85,29.05-4.87,9.69,9.8,18.34,22.69,28.17,32.64,4.73,8.63-6.17,14.96-12.41,19.05-61.42,40.19-147.76,25.14-191.19-33.82C-9.26,162.43,49.25,34.71,161.65,26.4ZM160.65,30.39C38.73,39.98-11.06,193.25,82.61,273.37c45.81,39.18,124.97,44.73,171.89,4.43,1.89-1.62,5.1-3.55,3.59-6.34l-33.36-37.53c-51.75,36.99-125.81,6.4-130.67-58.77-5.27-70.77,69.32-109.79,127.97-75.43l34.3-39.24c-24.95-22.15-62.47-32.71-95.68-30.1h0Z"
+                                d="M161.65,26.4c33.2-2.61,70.73,7.95,95.68,30.1l-34.3,39.24c-58.65-34.37-133.24,4.66-127.97,75.43,4.86,65.17,78.92,95.76,130.67,58.77l33.36,37.53c1.51,2.78-1.7,4.71-3.59,6.34-46.92,40.3-126.08,34.75-171.89-4.43C-11.06,193.25,38.73,39.98,160.65,30.39ZM160.65,30.39C38.73,39.98-11.06,193.25,82.61,273.37c45.81,39.18,124.97,44.73,171.89,4.43,1.89-1.62,5.1-3.55,3.59-6.34l-33.36-37.53c-51.75,36.99-125.81,6.4-130.67-58.77-5.27-70.77,69.32-109.79,127.97-75.43l34.3-39.24c-24.95-22.15-62.47-32.71-95.68-30.1h0Z"
                             />
                             <motion.path
                                 fill="#f9f8fa"
