@@ -186,7 +186,7 @@ const HomeScreen = () => {
                         />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-5xl font-bold text-cyan-400">ChipLocked</h1>
+                        <h1 className="text-5xl font-bold text-cyan-400 mb-4">ChipLocked</h1>
                         <p className="text-slate-400">The ultimate disc golf side-game tracker</p>
                     </div>
                 </div>
