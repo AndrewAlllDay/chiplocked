@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs, updateDoc, arrayUnion, doc } from "firebase/firestore";
 import { db, auth } from '../firebase'; // Import auth
+import { motion } from 'framer-motion';
 
 
 
