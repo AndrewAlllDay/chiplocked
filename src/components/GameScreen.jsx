@@ -56,11 +56,12 @@ const GameScreen = () => {
 
     useEffect(() => {
         if (game && game.currentHole !== lastHoleRef.current) {
-            const initialScores = game.players.reduce((acc, player) => {
-                acc[player.uid] = 0;
+            const newHoleScores = game.players.reduce((acc, player) => {
+                const existingScore = game.scores?.[player.uid]?.[game.currentHole];
+                acc[player.uid] = existingScore !== undefined ? existingScore : 0;
                 return acc;
             }, {});
-            setHoleScores(initialScores);
+            setHoleScores(newHoleScores);
             lastHoleRef.current = game.currentHole;
         }
     }, [game]);
@@ -96,7 +97,7 @@ const GameScreen = () => {
         }
     };
 
-    const handleSaveScores = async () => {
+    const handleNextHole = async () => {
         const gameDocRef = doc(db, 'games', gameId);
         const updates = {};
         for (const playerUid in holeScores) {
@@ -106,6 +107,15 @@ const GameScreen = () => {
         updates.status = isLastHole ? 'finished' : game.status;
         updates.currentHole = isLastHole ? game.currentHole : game.currentHole + 1;
         await updateDoc(gameDocRef, updates);
+    };
+
+    const handlePreviousHole = async () => {
+        if (game.currentHole > 1) {
+            const gameDocRef = doc(db, 'games', gameId);
+            await updateDoc(gameDocRef, {
+                currentHole: game.currentHole - 1
+            });
+        }
     };
 
     const adjustScore = (playerUid, amount) => {
@@ -128,6 +138,7 @@ const GameScreen = () => {
     const assignedChipsData = game.chipState || {};
     const allChipNames = allChips.map(c => c.name);
     const chipsInPot = allChipNames.filter(chipName => !assignedChipsData[chipName]);
+    const isNextDisabled = game.players.some(p => holeScores[p.uid] === undefined);
 
     const getPlayerChips = (playerUid) => {
         return Object.entries(assignedChipsData)
@@ -141,74 +152,94 @@ const GameScreen = () => {
 
     return (
         <>
-            <div className="bg-slate-900 text-white min-h-screen p-4 md:p-8 pb-24">
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-slate-800 p-6 rounded-lg mb-6">
-                        <h2 className="text-2xl font-semibold mb-4 border-b border-slate-700 pb-2">Scorecard</h2>
-                        <div className="space-y-3">
-                            {game.players.map(player => {
-                                const totalScore = calculateTotalScore(game.scores[player.uid]);
-                                return (
-                                    <div key={player.uid} className="flex justify-between items-center">
-                                        <span className="font-medium">{player.name}</span>
-                                        <span className={`font-bold text-xl ${totalScore > 0 ? 'text-red-400' : totalScore < 0 ? 'text-green-400' : ''}`}>{totalScore > 0 ? `+${totalScore}` : totalScore === 0 ? 'E' : totalScore}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {isHost && (
+            <div className="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                    <div className="max-w-4xl mx-auto">
                         <div className="bg-slate-800 p-6 rounded-lg mb-6">
-                            <h2 className="text-2xl font-semibold mb-4">Enter Scores for Hole {game.currentHole} / {game.totalHoles}</h2>
-                            <div className="space-y-4">
-                                {game.players.map((player) => (
-                                    <div key={player.uid} className="flex justify-between items-center bg-slate-700 p-3 rounded-lg">
-                                        <span className="font-semibold text-lg">{player.name}</span>
-                                        <div className="flex items-center gap-4">
-                                            <button onClick={() => adjustScore(player.uid, -1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">-</button>
-                                            <span className="text-2xl font-bold w-8 text-center">{holeScores[player.uid] || 0}</span>
-                                            <button onClick={() => adjustScore(player.uid, 1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">+</button>
+                            <h2 className="text-2xl font-semibold mb-4 border-b border-slate-700 pb-2">Scorecard</h2>
+                            <div className="space-y-3">
+                                {game.players.map(player => {
+                                    const totalScore = calculateTotalScore(game.scores[player.uid]);
+                                    return (
+                                        <div key={player.uid} className="flex justify-between items-center">
+                                            <span className="font-medium">{player.name}</span>
+                                            <span className={`font-bold text-xl ${totalScore > 0 ? 'text-red-400' : totalScore < 0 ? 'text-green-400' : ''}`}>{totalScore > 0 ? `+${totalScore}` : totalScore === 0 ? 'E' : totalScore}</span>
                                         </div>
-                                    </div>
-                                ))}
-                                <button onClick={handleSaveScores} className="w-full bg-green-600 hover:bg-green-500 rounded-md p-3 font-bold transition">{isLastHole ? 'Save & Finish Game' : 'Save & Advance to Next Hole'}</button>
+                                    );
+                                })}
                             </div>
                         </div>
-                    )}
 
-                    <div className="bg-slate-800 p-6 rounded-lg mb-6">
-                        <h2 className="text-2xl font-semibold mb-4">My Chips ({getPlayerChips(currentUser.uid).length})</h2>
-                        {getPlayerChips(currentUser.uid).length > 0 ? (
-                            <div className="flex flex-wrap justify-center gap-4">
-                                <AnimatePresence>
-                                    {getPlayerChips(currentUser.uid).map((chipName) => {
-                                        const chipDetails = getChipDetails(chipName);
-                                        return (
-                                            <div
-                                                key={chipName}
-                                            >
-                                                <Chip
-                                                    chipName={chipName}
-                                                    owner={getPlayerName(currentUser.uid)}
-                                                    chipType={chipDetails.type}
-                                                    onClick={() => { setSelectedChip(chipName); setIsTransferModalOpen(true); }}
-                                                    onLongPress={() => setChipForDescription(chipDetails)}
-                                                />
+                        {isHost && (
+                            <div className="bg-slate-800 p-6 rounded-lg mb-6">
+                                <h2 className="text-2xl font-semibold mb-2">Enter Scores for Hole {game.currentHole} / {game.totalHoles}</h2>
+                                < p className="text-slate-400 mb-4">Score over or under par on hole.</p>
+                                <div className="space-y-4">
+                                    {game.players.map((player) => (
+                                        <div key={player.uid} className="flex justify-between items-center bg-slate-700 p-3 rounded-lg">
+                                            <span className="font-semibold text-lg">{player.name}</span>
+                                            <div className="flex items-center gap-4">
+                                                <button onClick={() => adjustScore(player.uid, -1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">-</button>
+                                                <span className="text-2xl font-bold w-8 text-center">{holeScores[player.uid] || 0}</span>
+                                                <button onClick={() => adjustScore(player.uid, 1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">+</button>
                                             </div>
-                                        );
-                                    })}
-                                </AnimatePresence>
+                                        </div>
+                                    ))}
+                                    <div className="flex space-x-4">
+                                        <button
+                                            onClick={handlePreviousHole}
+                                            disabled={game.currentHole === 1}
+                                            className={`flex-1 bg-slate-500 hover:bg-slate-600 rounded-md p-3 font-bold transition-colors ${game.currentHole === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            Previous
+                                        </button>
+                                        <button
+                                            onClick={handleNextHole}
+                                            disabled={isNextDisabled}
+                                            className={`flex-1 bg-green-600 rounded-md p-3 font-bold transition ${isNextDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500'}`}
+                                        >
+                                            {isLastHole ? 'Save & Finish Game' : 'Save & Advance'}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        ) : <p className="text-slate-400">You are not currently holding any chips.</p>}
-                    </div>
+                        )}
 
-                    {isHost && (
-                        <div className="text-center space-x-4">
-                            <button onClick={() => setIsPotModalOpen(true)} className="bg-cyan-600 hover:bg-cyan-700 rounded-lg px-6 py-3 font-semibold transition-colors">Manage Pot</button>
-                            <button onClick={handleEndGame} className="bg-red-600 hover:bg-red-700 rounded-lg px-6 py-3 font-semibold transition-colors">End Game</button>
+                        <div className="bg-slate-800 p-6 rounded-lg mb-6">
+                            <h2 className="text-2xl font-semibold mb-4">My Chips ({getPlayerChips(currentUser.uid).length})</h2>
+                            {getPlayerChips(currentUser.uid).length > 0 ? (
+                                <div className="flex flex-wrap justify-center gap-4">
+                                    <AnimatePresence>
+                                        {getPlayerChips(currentUser.uid).map((chipName) => {
+                                            const chipDetails = getChipDetails(chipName);
+                                            return (
+                                                <div
+                                                    key={chipName}
+                                                >
+                                                    <Chip
+                                                        chipName={chipName}
+                                                        owner={getPlayerName(currentUser.uid)}
+                                                        chipType={chipDetails.type}
+                                                        onClick={() => { setSelectedChip(chipName); setIsTransferModalOpen(true); }}
+                                                        onLongPress={() => setChipForDescription(chipDetails)}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </AnimatePresence>
+                                </div>
+                            ) : <p className="text-slate-400">You are not currently holding any chips.</p>}
                         </div>
-                    )}
+
+                        {isHost && (
+                            <div className="text-center space-x-4">
+                                <button onClick={() => setIsPotModalOpen(true)} className="bg-cyan-600 hover:bg-cyan-700 rounded-lg px-6 py-3 font-semibold transition-colors">Chip Bag</button>
+                                <button onClick={handleEndGame} className="bg-red-600 hover:bg-red-700 rounded-lg px-6 py-3 font-semibold transition-colors">End Game</button>
+                            </div>
+                        )}
+                        {/* This is the new spacer div */}
+                        <div className="h-24"></div>
+                    </div>
                 </div>
 
                 <div className="fixed inset-x-0 bottom-0 bg-slate-900/80 backdrop-blur-sm border-t border-slate-700 z-10">
@@ -218,7 +249,7 @@ const GameScreen = () => {
                     </div>
                 </div>
 
-                <Modal isOpen={isPotModalOpen} onClose={() => { setIsPotModalOpen(false); setSelectedChip(null); }} title={selectedChip ? `Assign ${selectedChip}` : "Chips in the Pot"}>
+                <Modal isOpen={isPotModalOpen} onClose={() => { setIsPotModalOpen(false); setSelectedChip(null); }} title={selectedChip ? `Assign ${selectedChip}` : "Chips in the Bag"}>
                     {!selectedChip ? (
                         <div className="max-h-[60vh] overflow-y-auto p-2">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 place-items-center">
