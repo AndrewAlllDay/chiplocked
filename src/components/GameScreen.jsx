@@ -22,11 +22,7 @@ const GameScreen = () => {
     const lastHoleRef = useRef(null);
 
     useEffect(() => {
-        const unsubscribeAuth = auth.onAuthStateChanged(user => {
-            if (user) setCurrentUser(user);
-            else navigate('/');
-        });
-
+        // We no longer need to check for auth state here
         const chipsCollectionRef = collection(db, 'chip-types');
         const unsubscribeChips = onSnapshot(chipsCollectionRef, (snapshot) => {
             const chipsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -34,10 +30,9 @@ const GameScreen = () => {
         });
 
         return () => {
-            unsubscribeAuth();
             unsubscribeChips();
         };
-    }, [navigate]);
+    }, []);
 
     useEffect(() => {
         if (!gameId) return;
@@ -130,11 +125,11 @@ const GameScreen = () => {
         return playerScores ? Object.values(playerScores).reduce((t, s) => t + s, 0) : 0;
     };
 
-    if (!game || !currentUser || allChips.length === 0) {
+    if (!game || allChips.length === 0) {
         return <div className="bg-slate-900 text-white min-h-screen flex justify-center items-center"><h1 className="text-3xl font-bold">Loading Game...</h1></div>;
     }
 
-    const isHost = currentUser.uid === game.host;
+    const isHost = auth.currentUser.uid === game.host;
     const assignedChipsData = game.chipState || {};
     const allChipNames = allChips.map(c => c.name);
     const chipsInPot = allChipNames.filter(chipName => !assignedChipsData[chipName]);
@@ -206,11 +201,11 @@ const GameScreen = () => {
                         )}
 
                         <div className="bg-slate-800 p-6 rounded-lg mb-6">
-                            <h2 className="text-2xl font-semibold mb-4">My Chips ({getPlayerChips(currentUser.uid).length})</h2>
-                            {getPlayerChips(currentUser.uid).length > 0 ? (
+                            <h2 className="text-2xl font-semibold mb-4">My Chips ({getPlayerChips(auth.currentUser.uid).length})</h2>
+                            {getPlayerChips(auth.currentUser.uid).length > 0 ? (
                                 <div className="flex flex-wrap justify-center gap-4">
                                     <AnimatePresence>
-                                        {getPlayerChips(currentUser.uid).map((chipName) => {
+                                        {getPlayerChips(auth.currentUser.uid).map((chipName) => {
                                             const chipDetails = getChipDetails(chipName);
                                             return (
                                                 <div
@@ -218,7 +213,7 @@ const GameScreen = () => {
                                                 >
                                                     <Chip
                                                         chipName={chipName}
-                                                        owner={getPlayerName(currentUser.uid)}
+                                                        owner={getPlayerName(auth.currentUser.uid)}
                                                         chipType={chipDetails.type}
                                                         onClick={() => { setSelectedChip(chipName); setIsTransferModalOpen(true); }}
                                                         onLongPress={() => setChipForDescription(chipDetails)}
@@ -237,7 +232,6 @@ const GameScreen = () => {
                                 <button onClick={handleEndGame} className="bg-red-600 hover:bg-red-700 rounded-lg px-6 py-3 font-semibold transition-colors">End Game</button>
                             </div>
                         )}
-                        {/* This is the new spacer div */}
                         <div className="h-24"></div>
                     </div>
                 </div>
@@ -274,7 +268,7 @@ const GameScreen = () => {
                 <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title={`Transfer ${selectedChip}`}>
                     <div className="flex flex-col space-y-2">
                         <p className="text-slate-400 mb-2">Who are you giving this chip to?</p>
-                        {game.players.filter(p => p.uid !== currentUser.uid).map((player) => (
+                        {game.players.filter(p => p.uid !== auth.currentUser.uid).map((player) => (
                             <button key={player.uid} onClick={() => handlePlayerTransferChip(player.uid)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">{player.name}</button>
                         ))}
                     </div>
