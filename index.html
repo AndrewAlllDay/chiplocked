@@ -1,31 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
+<script type="module" src="/src/main.jsx"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(registration => {
+          console.log('Service Worker registered: ', registration);
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChipLocked</title>
-  <link rel="manifest" href="/manifest.json" />
-</head>
-
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-  <script>
-    // Register the service worker
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(registration => {
-            console.log('Service Worker registered: ', registration);
-          })
-          .catch(registrationError => {
-            console.log('Service Worker registration failed: ', registrationError);
+          // Listen for the 'updatefound' event on the service worker registration
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // This is when a new version is ready to be activated
+                // Trigger your pop-up here
+                console.log('New content is available!');
+                alert('A new version of ChipLocked is available! Please refresh to update.');
+                // You could replace the alert with a custom UI pop-up
+              }
+            });
           });
-      });
-    }
-  </script>
-</body>
-
-</html>
+        })
+        .catch(error => {
+          console.error('Service Worker registration failed:', error);
+        });
+    });
+  }
+</script>
