@@ -45,9 +45,10 @@ const Chip = ({ chipName, owner, onClick, onLongPress }) => {
     const handleContextMenu = (e) => {
         e.preventDefault(); // Prevent the default right-click menu
 
-        // Vibrate the device for a short duration
+        // Check for vibration support and trigger a pattern.
+        // The pattern [100, 30, 100] vibrates for 100ms, pauses for 30ms, and vibrates again for 100ms.
         if ("vibrate" in navigator) {
-            navigator.vibrate(50); // Vibrate for 50 milliseconds
+            navigator.vibrate([100, 30, 100]);
         }
 
         if (onLongPress) {
