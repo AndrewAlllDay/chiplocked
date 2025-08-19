@@ -36,7 +36,7 @@ const HomeScreen = () => {
     const [activeForm, setActiveForm] = useState(null);
     const [name, setName] = useState('');
     const [roomCode, setRoomCode] = useState('');
-    const [totalHoles, setTotalHoles] = useState(9);
+    const [totalHoles, setTotalHoles] = useState(18); // Changed from 9 to 18
 
     const [showDashboardButton, setShowDashboardButton] = useState(false);
     // eslint-disable-next-line no-unused-vars
@@ -156,7 +156,7 @@ const HomeScreen = () => {
 
             <div className="w-full max-w-sm flex flex-col items-center">
                 {/* Logo and title section */}
-                <div className="flex flex-col items-center mb-8">
+                <div className="flex flex-col items-center mb-8 gap-4">
                     <div className="relative w-[150px] h-[150px] flex justify-center items-center">
                         {/* Green circle fades in first */}
                         <motion.img
@@ -176,17 +176,17 @@ const HomeScreen = () => {
                             animate={{
                                 scale: 1,
                                 opacity: 1,
-                                rotate: 0
+                                rotate: [0, 90, 0] // Rotates 90 degrees and then back to 0
                             }}
                             transition={{
-                                scale: { delay: 0.7, duration: 0.5 }, // Fade in after a delay
+                                scale: { delay: 0.7, duration: 0.2 },
                                 opacity: { delay: 0.7, duration: 0.5 },
-                                rotate: { from: -180, delay: 1.2, duration: 1, ease: "easeInOut" } // Rotate after fade in
+                                rotate: { delay: 1.2, duration: 0.8, ease: "easeInOut" }
                             }}
                         />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-5xl font-bold text-cyan-400 mb-4">ChipLocked</h1>
+                        <h1 className="text-5xl font-bold text-cyan-400">ChipLocked</h1>
                         <p className="text-slate-400">The ultimate disc golf side-game tracker</p>
                     </div>
                 </div>
