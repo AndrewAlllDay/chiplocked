@@ -6,7 +6,24 @@ import { doc, onSnapshot, updateDoc, collection } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import Chip from './Chip';
 import Modal from './Modal';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// Animation variants for staggered lists (like the chip bag)
+const containerVariants = {
+    hidden: { opacity: 1 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.04,
+        },
+    },
+};
+
+const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 },
+};
+
 
 const GameScreen = () => {
     const { gameId } = useParams();
@@ -15,14 +32,15 @@ const GameScreen = () => {
     const [allChips, setAllChips] = useState([]);
     const [selectedChip, setSelectedChip] = useState(null);
     const [chipForDescription, setChipForDescription] = useState(null);
-    const [currentUser, setCurrentUser] = useState(null);
     const [isPotModalOpen, setIsPotModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [holeScores, setHoleScores] = useState({});
     const lastHoleRef = useRef(null);
+    // --- 1. Add state for the new confirmation modal ---
+    const [isConfirmEndGameModalOpen, setIsConfirmEndGameModalOpen] = useState(false);
+
 
     useEffect(() => {
-        // We no longer need to check for auth state here
         const chipsCollectionRef = collection(db, 'chip-types');
         const unsubscribeChips = onSnapshot(chipsCollectionRef, (snapshot) => {
             const chipsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -72,9 +90,9 @@ const GameScreen = () => {
     };
 
     const handlePlayerTransferChip = async (newOwnerUid) => {
-        if (!selectedChip || !currentUser) return;
+        if (!selectedChip || !auth.currentUser) return;
         const currentOwnerUid = game.chipState?.[selectedChip]?.owner;
-        if (currentUser.uid !== currentOwnerUid) {
+        if (auth.currentUser.uid !== currentOwnerUid) {
             alert("You can't reassign a chip you don't own!");
             return;
         }
@@ -86,10 +104,10 @@ const GameScreen = () => {
         setSelectedChip(null);
     };
 
-    const handleEndGame = async () => {
-        if (window.confirm("Are you sure you want to end the game for everyone?")) {
-            await updateDoc(doc(db, 'games', gameId), { status: 'finished' });
-        }
+    // --- 2. Create the function the modal will confirm ---
+    const confirmEndGame = async () => {
+        await updateDoc(doc(db, 'games', gameId), { status: 'finished' });
+        setIsConfirmEndGameModalOpen(false); // Close modal on success
     };
 
     const handleNextHole = async () => {
@@ -126,7 +144,18 @@ const GameScreen = () => {
     };
 
     if (!game || allChips.length === 0) {
-        return <div className="bg-slate-900 text-white min-h-screen flex justify-center items-center"><h1 className="text-3xl font-bold">Loading Game...</h1></div>;
+        return (
+            <div className="bg-slate-900 text-white min-h-screen flex justify-center items-center">
+                <motion.h1
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, repeat: Infinity, repeatType: 'reverse' }}
+                    className="text-3xl font-bold"
+                >
+                    Loading Game...
+                </motion.h1>
+            </div>
+        );
     }
 
     const isHost = auth.currentUser.uid === game.host;
@@ -150,6 +179,7 @@ const GameScreen = () => {
             <div className="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-4 md:p-8">
                     <div className="max-w-4xl mx-auto">
+                        {/* ... Omitted scorecard and score entry for brevity ... */}
                         <div className="bg-slate-800 p-6 rounded-lg mb-6">
                             <h2 className="text-2xl font-semibold mb-4 border-b border-slate-700 pb-2">Scorecard</h2>
                             <div className="space-y-3">
@@ -166,38 +196,61 @@ const GameScreen = () => {
                         </div>
 
                         {isHost && (
-                            <div className="bg-slate-800 p-6 rounded-lg mb-6">
-                                <h2 className="text-2xl font-semibold mb-2">Enter Scores for Hole {game.currentHole} / {game.totalHoles}</h2>
-                                < p className="text-slate-400 mb-4">Score over or under par on hole.</p>
-                                <div className="space-y-4">
-                                    {game.players.map((player) => (
-                                        <div key={player.uid} className="flex justify-between items-center bg-slate-700 p-3 rounded-lg">
-                                            <span className="font-semibold text-lg">{player.name}</span>
-                                            <div className="flex items-center gap-4">
-                                                <button onClick={() => adjustScore(player.uid, -1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">-</button>
-                                                <span className="text-2xl font-bold w-8 text-center">{holeScores[player.uid] || 0}</span>
-                                                <button onClick={() => adjustScore(player.uid, 1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">+</button>
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={game.currentHole}
+                                    initial={{ opacity: 0, x: 50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -50 }}
+                                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                                >
+                                    <div className="bg-slate-800 p-6 rounded-lg mb-6">
+                                        <h2 className="text-2xl font-semibold mb-2">Enter Scores for Hole {game.currentHole} / {game.totalHoles}</h2>
+                                        <p className="text-slate-400 mb-4">Score over or under par on hole.</p>
+                                        <div className="space-y-4">
+                                            {game.players.map((player) => (
+                                                <div key={player.uid} className="flex justify-between items-center bg-slate-700 p-3 rounded-lg">
+                                                    <span className="font-semibold text-lg">{player.name}</span>
+                                                    <div className="flex items-center gap-4">
+                                                        <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustScore(player.uid, -1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">-</motion.button>
+                                                        <div className="relative w-8 h-8 text-center flex items-center justify-center">
+                                                            <AnimatePresence mode="popLayout">
+                                                                <motion.span
+                                                                    key={holeScores[player.uid] || 0}
+                                                                    initial={{ opacity: 0, y: -10 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, y: 10 }}
+                                                                    transition={{ duration: 0.15 }}
+                                                                    className="absolute text-2xl font-bold"
+                                                                >
+                                                                    {holeScores[player.uid] > 0 ? `+${holeScores[player.uid]}` : holeScores[player.uid] || 0}
+                                                                </motion.span>
+                                                            </AnimatePresence>
+                                                        </div>
+                                                        <motion.button whileTap={{ scale: 0.9 }} onClick={() => adjustScore(player.uid, 1)} className="w-8 h-8 bg-slate-600 rounded-full text-xl font-bold flex items-center justify-center">+</motion.button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className="flex space-x-4">
+                                                <button
+                                                    onClick={handlePreviousHole}
+                                                    disabled={game.currentHole === 1}
+                                                    className={`flex-1 bg-slate-500 hover:bg-slate-600 rounded-md p-3 font-bold transition-colors ${game.currentHole === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                >
+                                                    Previous
+                                                </button>
+                                                <button
+                                                    onClick={handleNextHole}
+                                                    disabled={isNextDisabled}
+                                                    className={`flex-1 bg-green-600 rounded-md p-3 font-bold transition ${isNextDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500'}`}
+                                                >
+                                                    {isLastHole ? 'Save & Finish Game' : 'Save & Advance'}
+                                                </button>
                                             </div>
                                         </div>
-                                    ))}
-                                    <div className="flex space-x-4">
-                                        <button
-                                            onClick={handlePreviousHole}
-                                            disabled={game.currentHole === 1}
-                                            className={`flex-1 bg-slate-500 hover:bg-slate-600 rounded-md p-3 font-bold transition-colors ${game.currentHole === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        >
-                                            Previous
-                                        </button>
-                                        <button
-                                            onClick={handleNextHole}
-                                            disabled={isNextDisabled}
-                                            className={`flex-1 bg-green-600 rounded-md p-3 font-bold transition ${isNextDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500'}`}
-                                        >
-                                            {isLastHole ? 'Save & Finish Game' : 'Save & Advance'}
-                                        </button>
                                     </div>
-                                </div>
-                            </div>
+                                </motion.div>
+                            </AnimatePresence>
                         )}
 
                         <div className="bg-slate-800 p-6 rounded-lg mb-6">
@@ -208,8 +261,13 @@ const GameScreen = () => {
                                         {getPlayerChips(auth.currentUser.uid).map((chipName) => {
                                             const chipDetails = getChipDetails(chipName);
                                             return (
-                                                <div
+                                                <motion.div
                                                     key={chipName}
+                                                    layout
+                                                    initial={{ opacity: 0, scale: 0.5 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+                                                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                                                 >
                                                     <Chip
                                                         chipName={chipName}
@@ -218,7 +276,7 @@ const GameScreen = () => {
                                                         onClick={() => { setSelectedChip(chipName); setIsTransferModalOpen(true); }}
                                                         onLongPress={() => setChipForDescription(chipDetails)}
                                                     />
-                                                </div>
+                                                </motion.div>
                                             );
                                         })}
                                     </AnimatePresence>
@@ -226,10 +284,12 @@ const GameScreen = () => {
                             ) : <p className="text-slate-400">You are not currently holding any chips.</p>}
                         </div>
 
+
                         {isHost && (
                             <div className="text-center space-x-4">
                                 <button onClick={() => setIsPotModalOpen(true)} className="bg-cyan-600 hover:bg-cyan-700 rounded-lg px-6 py-3 font-semibold transition-colors">Chip Bag</button>
-                                <button onClick={handleEndGame} className="bg-red-600 hover:bg-red-700 rounded-lg px-6 py-3 font-semibold transition-colors">End Game</button>
+                                {/* --- 3. Update the button's onClick handler --- */}
+                                <button onClick={() => setIsConfirmEndGameModalOpen(true)} className="bg-red-600 hover:bg-red-700 rounded-lg px-6 py-3 font-semibold transition-colors">End Game</button>
                             </div>
                         )}
                         <div className="h-24"></div>
@@ -243,40 +303,98 @@ const GameScreen = () => {
                     </div>
                 </div>
 
-                <Modal isOpen={isPotModalOpen} onClose={() => { setIsPotModalOpen(false); setSelectedChip(null); }} title={selectedChip ? `Assign ${selectedChip}` : "Chips in the Bag"}>
-                    {!selectedChip ? (
-                        <div className="max-h-[60vh] overflow-y-auto p-2">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 place-items-center">
-                                {chipsInPot.map((chipName) => {
-                                    const chipDetails = getChipDetails(chipName);
-                                    return <Chip key={chipName} chipName={chipName} owner={null} chipType={chipDetails.type} onClick={() => setSelectedChip(chipName)} onLongPress={() => setChipForDescription(chipDetails)} />
-                                })}
-                                {chipsInPot.length === 0 && <p className="col-span-full text-slate-400">All chips have been handed out.</p>}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col space-y-2">
-                            <p className="text-slate-400 mb-2">Who is holding this chip now?</p>
-                            {game.players.map((player) => (
-                                <button key={player.uid} onClick={() => handleHostAssignChip(player.uid)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">{player.name}</button>
-                            ))}
-                            <button onClick={() => handleHostAssignChip(null)} className="bg-slate-500 w-full text-left hover:bg-slate-600 rounded-md px-4 py-3 font-semibold transition-colors">Unclaim (Return to Pot)</button>
-                        </div>
+                {/* ... Omitted other modals for brevity ... */}
+                <AnimatePresence>
+                    {isPotModalOpen && (
+                        <Modal onClose={() => { setIsPotModalOpen(false); setSelectedChip(null); }} title={selectedChip ? `Assign ${selectedChip}` : "Chips in the Bag"}>
+                            {!selectedChip ? (
+                                <div className="max-h-[60vh] overflow-y-auto p-2">
+                                    <motion.div
+                                        className="grid grid-cols-2 sm:grid-cols-3 gap-4 place-items-center"
+                                        variants={containerVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                    >
+                                        {chipsInPot.map((chipName) => {
+                                            const chipDetails = getChipDetails(chipName);
+                                            return (
+                                                <motion.div key={chipName} variants={itemVariants}>
+                                                    <Chip chipName={chipName} owner={null} chipType={chipDetails.type} onClick={() => setSelectedChip(chipName)} onLongPress={() => setChipForDescription(chipDetails)} />
+                                                </motion.div>
+                                            )
+                                        })}
+                                        {chipsInPot.length === 0 && <p className="col-span-full text-slate-400">All chips have been handed out.</p>}
+                                    </motion.div>
+                                </div>
+                            ) : (
+                                <motion.div
+                                    className="flex flex-col space-y-2"
+                                    variants={containerVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                >
+                                    <p className="text-slate-400 mb-2">Who is holding this chip now?</p>
+                                    {game.players.map((player) => (
+                                        <motion.button key={player.uid} variants={itemVariants} onClick={() => handleHostAssignChip(player.uid)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">{player.name}</motion.button>
+                                    ))}
+                                    <motion.button variants={itemVariants} onClick={() => handleHostAssignChip(null)} className="bg-slate-500 w-full text-left hover:bg-slate-600 rounded-md px-4 py-3 font-semibold transition-colors">Unclaim (Return to Pot)</motion.button>
+                                </motion.div>
+                            )}
+                        </Modal>
                     )}
-                </Modal>
+                </AnimatePresence>
 
-                <Modal isOpen={isTransferModalOpen} onClose={() => setIsTransferModalOpen(false)} title={`Transfer ${selectedChip}`}>
-                    <div className="flex flex-col space-y-2">
-                        <p className="text-slate-400 mb-2">Who are you giving this chip to?</p>
-                        {game.players.filter(p => p.uid !== auth.currentUser.uid).map((player) => (
-                            <button key={player.uid} onClick={() => handlePlayerTransferChip(player.uid)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">{player.name}</button>
-                        ))}
-                    </div>
-                </Modal>
+                <AnimatePresence>
+                    {isTransferModalOpen && (
+                        <Modal onClose={() => setIsTransferModalOpen(false)} title={`Transfer ${selectedChip}`}>
+                            <motion.div
+                                className="flex flex-col space-y-2"
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="visible"
+                            >
+                                <p className="text-slate-400 mb-2">Who are you giving this chip to?</p>
+                                {game.players.filter(p => p.uid !== auth.currentUser.uid).map((player) => (
+                                    <motion.button key={player.uid} variants={itemVariants} onClick={() => handlePlayerTransferChip(player.uid)} className="bg-cyan-600 w-full text-left hover:bg-cyan-700 rounded-md px-4 py-3 font-semibold transition-colors">{player.name}</motion.button>
+                                ))}
+                            </motion.div>
+                        </Modal>
+                    )}
+                </AnimatePresence>
 
-                <Modal isOpen={!!chipForDescription} onClose={() => setChipForDescription(null)} title={chipForDescription?.name}>
-                    {chipForDescription && <div className="max-h-[60vh] overflow-y-auto pr-2 text-slate-300"><p>{chipForDescription.description}</p></div>}
-                </Modal>
+                <AnimatePresence>
+                    {!!chipForDescription && (
+                        <Modal onClose={() => setChipForDescription(null)} title={chipForDescription?.name}>
+                            {chipForDescription && <div className="max-h-[60vh] overflow-y-auto pr-2 text-slate-300"><p>{chipForDescription.description}</p></div>}
+                        </Modal>
+                    )}
+                </AnimatePresence>
+
+                {/* --- 4. Add the new modal JSX --- */}
+                <AnimatePresence>
+                    {isConfirmEndGameModalOpen && (
+                        <Modal onClose={() => setIsConfirmEndGameModalOpen(false)} title="Confirm End Game">
+                            <div className="flex flex-col space-y-4">
+                                <p className="text-slate-300">Are you sure you want to end the game for everyone? This action cannot be undone.</p>
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        onClick={() => setIsConfirmEndGameModalOpen(false)}
+                                        className="bg-slate-500 hover:bg-slate-600 rounded-md px-4 py-2 font-semibold transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmEndGame}
+                                        className="bg-red-600 hover:bg-red-700 rounded-md px-4 py-2 font-semibold transition-colors"
+                                    >
+                                        End Game
+                                    </button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+                </AnimatePresence>
+
             </div>
         </>
     );

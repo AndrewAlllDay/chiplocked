@@ -1,8 +1,6 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-// --- CHANGE IS HERE ---
-// Import the necessary functions for authentication
+import { initializeFirestore } from "firebase/firestore";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 
 // Your web app's Firebase configuration, using the .env variables
@@ -18,23 +16,31 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
+// Initialize Firestore with settings for offline persistence
+// This new syntax replaces the deprecated db.settings() method
+export const db = initializeFirestore(app, {
+    cache: {
+        // Specify a cache size and use `indexedDb` as the storage type
+        persistence: "indexedDb",
+    }
+});
 
-// --- AND CHANGE IS HERE ---
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
 // Automatically sign in the user anonymously when the app loads
+// A single check is sufficient to prevent a sign-in loop
+if (!auth.currentUser) {
+    signInAnonymously(auth).catch((error) => {
+        console.error("Error signing in anonymously:", error);
+    });
+}
+
+// The onAuthStateChanged listener is now used for logging and reacting to state changes
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // User is signed in, see docs for a list of available properties
-        // https://firebase.google.com/docs/reference/js/firebase.User
         console.log("User is signed in with UID:", user.uid);
     } else {
-        // User is signed out, so sign them in anonymously
-        signInAnonymously(auth).catch((error) => {
-            console.error("Error signing in anonymously:", error);
-        });
+        console.log("User is signed out.");
     }
 });

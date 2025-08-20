@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chip-locked-cache-v1.0.1'; // Increment the version number
+const CACHE_NAME = 'chip-locked-cache-v1.0.2'; // Increment the version number
 const urlsToCache = [
     '/',
     '/index.html',
