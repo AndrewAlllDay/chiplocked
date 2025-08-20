@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, addDoc, query, where, getDocs, updateDoc, arrayUnion, doc } from "firebase/firestore";
-import { db, auth } from '../firebase'; // Import auth
-import { motion } from 'framer-motion';
+import { db, auth } from '../firebase';
+import { motion, AnimatePresence } from 'framer-motion';
+import Modal from './Modal';
+import RulesContent from './RulesContent';
 
 // Import the two new image assets for the logo
 import greenCircleImage from '../assets/images/green-circle.png';
@@ -32,16 +34,14 @@ const InputField = ({ value, onChange, placeholder, ...props }) => (
 
 const HomeScreen = () => {
     const navigate = useNavigate();
-
     const [activeForm, setActiveForm] = useState(null);
     const [name, setName] = useState('');
     const [roomCode, setRoomCode] = useState('');
-    const [totalHoles, setTotalHoles] = useState(18); // Changed from 9 to 18
-
+    const [totalHoles, setTotalHoles] = useState(18);
     const [showDashboardButton, setShowDashboardButton] = useState(false);
-    // eslint-disable-next-line no-unused-vars
     const [tapCount, setTapCount] = useState(0);
     const [lastTapTime, setLastTapTime] = useState(0);
+    const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
 
     const handleCreateGame = async (e) => {
         e.preventDefault();
@@ -140,130 +140,171 @@ const HomeScreen = () => {
     };
 
     return (
-        <div className="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4 overflow-hidden">
-            <div
-                className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32"
-                onClick={handleSecretTap}
-            ></div>
+        <>
+            <div className="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-4 overflow-hidden">
+                <div
+                    className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32"
+                    onClick={handleSecretTap}
+                ></div>
 
-            {showDashboardButton && (
-                <div className="absolute top-4 right-4 z-10">
-                    <Link to="/dashboard" className="text-sm bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">
-                        Chip Dashboard
-                    </Link>
-                </div>
-            )}
-
-            <div className="w-full max-w-sm flex flex-col items-center">
-                {/* Logo and title section */}
-                <div className="flex flex-col items-center mb-8 gap-4">
-                    <div className="relative w-[150px] h-[150px] flex justify-center items-center">
-                        {/* Green circle fades in first */}
-                        <motion.img
-                            src={greenCircleImage}
-                            alt="Green Circle Background"
-                            className="w-full h-full object-contain"
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.7 }}
-                        />
-                        {/* 'c' image loads and spins after a delay */}
-                        <motion.img
-                            src={cImage}
-                            alt="Letter C"
-                            className="absolute w-[120px] h-[120px] object-contain"
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{
-                                scale: 1,
-                                opacity: 1,
-                                rotate: [0, 90, 0] // Rotates 90 degrees and then back to 0
-                            }}
-                            transition={{
-                                scale: { delay: 0.7, duration: 0.2 },
-                                opacity: { delay: 0.7, duration: 0.5 },
-                                rotate: { delay: 1.2, duration: 0.8, ease: "easeInOut" }
-                            }}
-                        />
+                {showDashboardButton && (
+                    <div className="absolute top-4 right-4 z-10">
+                        <Link to="/dashboard" className="text-sm bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                            Chip Dashboard
+                        </Link>
                     </div>
-                    <div className="text-center">
-                        <h1 className="text-5xl font-bold text-cyan-400">ChipLocked</h1>
-                        <p className="text-slate-400">The ultimate disc golf side-game tracker</p>
-                    </div>
-                </div>
+                )}
 
-                <div className="w-full max-w-sm">
-                    <div className="bg-slate-800 rounded-lg overflow-hidden">
-                        <div
-                            onClick={() => toggleForm('create')}
-                            className="p-6 text-center cursor-pointer hover:bg-slate-700 transition-colors"
-                        >
-                            <h2 className="text-2xl font-semibold mb-2">Create Game</h2>
-                            <p className="text-slate-400">Start a new game and invite your friends.</p>
+                <motion.div
+                    className="w-full max-w-sm flex flex-col items-center"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                        hidden: { opacity: 0 },
+                        visible: {
+                            opacity: 1,
+                            transition: { staggerChildren: 0.15 }
+                        }
+                    }}
+                >
+                    <motion.div
+                        className="flex flex-col items-center mb-8 gap-4"
+                        variants={{ hidden: { opacity: 0, y: -20 }, visible: { opacity: 1, y: 0 } }}
+                    >
+                        <div className="relative w-[150px] h-[150px] flex justify-center items-center">
+                            <motion.img
+                                src={greenCircleImage}
+                                alt="Green Circle Background"
+                                className="w-full h-full object-contain"
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.7 }}
+                            />
+                            <motion.img
+                                src={cImage}
+                                alt="Letter C"
+                                className="absolute w-[120px] h-[120px] object-contain"
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{
+                                    scale: 1,
+                                    opacity: 1,
+                                    rotate: [0, 90, 0]
+                                }}
+                                transition={{
+                                    scale: { delay: 0.7, duration: 0.2 },
+                                    opacity: { delay: 0.7, duration: 0.5 },
+                                    rotate: { delay: 1.2, duration: 0.8, ease: "easeInOut" }
+                                }}
+                            />
                         </div>
-                        <div className={`transition-all duration-300 ease-in-out grid ${activeForm === 'create' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                            <div className="overflow-hidden">
-                                <form onSubmit={handleCreateGame} className="p-6 pt-6 space-y-4">
-                                    <InputField
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Enter your name"
-                                        maxLength="12"
-                                    />
-                                    <div>
-                                        <p className="text-center text-slate-400 mb-2">How many holes?</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button type="button" onClick={() => setTotalHoles(9)} className={`p-3 rounded-md font-bold transition ${totalHoles === 9 ? 'bg-secondary' : 'bg-slate-700 hover:bg-slate-600'}`}>
-                                                9 Holes
-                                            </button>
-                                            <button type="button" onClick={() => setTotalHoles(18)} className={`p-3 rounded-md font-bold transition ${totalHoles === 18 ? 'bg-secondary' : 'bg-slate-700 hover:bg-slate-600'}`}>
-                                                18 Holes
-                                            </button>
+                        <div className="text-center">
+                            <h1 className="text-5xl font-bold text-cyan-400">ChipLocked</h1>
+                            <p className="text-slate-400">The ultimate disc golf side-game tracker</p>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        className="w-full max-w-sm"
+                        variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                    >
+                        <div className="bg-slate-800 rounded-lg overflow-hidden">
+                            <div
+                                onClick={() => toggleForm('create')}
+                                className="p-6 text-center cursor-pointer hover:bg-slate-700 transition-colors"
+                            >
+                                <h2 className="text-2xl font-semibold mb-2">Create Game</h2>
+                                <p className="text-slate-400">Start a new game and invite your friends.</p>
+                            </div>
+                            <div className={`transition-all duration-300 ease-in-out grid ${activeForm === 'create' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                <div className="overflow-hidden">
+                                    <form onSubmit={handleCreateGame} className="p-6 pt-6 space-y-4">
+                                        <InputField
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="Enter your name"
+                                            maxLength="12"
+                                        />
+                                        <div>
+                                            <p className="text-center text-slate-400 mb-2">How many holes?</p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button type="button" onClick={() => setTotalHoles(9)} className={`p-3 rounded-md font-bold transition ${totalHoles === 9 ? 'bg-cyan-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+                                                    9 Holes
+                                                </button>
+                                                <button type="button" onClick={() => setTotalHoles(18)} className={`p-3 rounded-md font-bold transition ${totalHoles === 18 ? 'bg-cyan-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+                                                    18 Holes
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <button type="submit" className="w-full bg-secondary rounded-md p-3 font-bold transition">
-                                        Create and Go
-                                    </button>
-                                </form>
+                                        <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 rounded-md p-3 font-bold transition">
+                                            Create and Go
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="h-6"></div>
+                        <div className="h-6"></div>
 
-                    <div className="bg-slate-800 rounded-lg overflow-hidden">
-                        <div
-                            onClick={() => toggleForm('join')}
-                            className="p-6 text-center cursor-pointer hover:bg-slate-700 transition-colors"
+                        <div className="bg-slate-800 rounded-lg overflow-hidden">
+                            <div
+                                onClick={() => toggleForm('join')}
+                                className="p-6 text-center cursor-pointer hover:bg-slate-700 transition-colors"
+                            >
+                                <h2 className="text-2xl font-semibold mb-2">Join Game</h2>
+                                <p className="text-slate-400">Join an existing game with a room code.</p>
+                            </div>
+                            <div className={`transition-all duration-300 ease-in-out grid ${activeForm === 'join' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                                <div className="overflow-hidden">
+                                    <form onSubmit={handleJoinGame} className="p-6 pt-6 space-y-4">
+                                        <InputField
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="Enter your name"
+                                            maxLength="12"
+                                        />
+                                        <InputField
+                                            value={roomCode}
+                                            onChange={(e) => setRoomCode(e.target.value)}
+                                            placeholder="Enter 6-character room code"
+                                            maxLength="6"
+                                            style={{ textTransform: 'uppercase' }}
+                                        />
+                                        <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 rounded-md p-3 font-bold transition">
+                                            Join and Go
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        className="mt-8 text-center"
+                        variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+                    >
+                        <button
+                            onClick={() => setIsRulesModalOpen(true)}
+                            className="text-slate-400 hover:text-cyan-400 font-semibold transition-colors"
                         >
-                            <h2 className="text-2xl font-semibold mb-2">Join Game</h2>
-                            <p className="text-slate-400">Join an existing game with a room code.</p>
-                        </div>
-                        <div className={`transition-all duration-300 ease-in-out grid ${activeForm === 'join' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                            <div className="overflow-hidden">
-                                <form onSubmit={handleJoinGame} className="p-6 pt-6 space-y-4">
-                                    <InputField
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Enter your name"
-                                        maxLength="12"
-                                    />
-                                    <InputField
-                                        value={roomCode}
-                                        onChange={(e) => setRoomCode(e.target.value)}
-                                        placeholder="Enter 6-character room code"
-                                        maxLength="6"
-                                        style={{ textTransform: 'uppercase' }}
-                                    />
-                                    <button type="submit" className="w-full bg-secondary rounded-md p-3 font-bold transition">
-                                        Join and Go
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            How to Play
+                        </button>
+                    </motion.div>
+
+                </motion.div>
             </div>
-        </div>
+
+            <AnimatePresence>
+                {isRulesModalOpen && (
+                    <Modal
+                        onClose={() => setIsRulesModalOpen(false)}
+                        title="How to Play"
+                        titleClassName="text-cyan-400"
+                    >
+                        <RulesContent />
+                    </Modal>
+                )}
+            </AnimatePresence>
+        </>
     );
 };
 

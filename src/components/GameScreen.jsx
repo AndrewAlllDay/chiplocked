@@ -206,7 +206,7 @@ const GameScreen = () => {
                                 >
                                     <div className="bg-slate-800 p-6 rounded-lg mb-6">
                                         <h2 className="text-2xl font-semibold mb-2">Enter Scores for Hole {game.currentHole} / {game.totalHoles}</h2>
-                                        <p className="text-slate-400 mb-4">Score over or under par on hole.</p>
+                                        <p className="text-slate-400 mb-4">Score against par on hole.</p>
                                         <div className="space-y-4">
                                             {game.players.map((player) => (
                                                 <div key={player.uid} className="flex justify-between items-center bg-slate-700 p-3 rounded-lg">
